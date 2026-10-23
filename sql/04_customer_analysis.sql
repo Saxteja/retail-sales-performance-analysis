@@ -1,0 +1,232 @@
+/*
+PROJECT: Retail Sales Data Analysis
+FILE: 04_customer_analysis.sql
+DATABASE: Fiction Retail (SQLite)
+
+PURPOSE
+Analyze customer coverage, purchase frequency, delivered sales contribution,
+monthly customer activity, and customer-level sales concentration.
+
+METRIC DEFINITIONS
+- Total Customers = all rows in customers.
+- Customers with Orders = distinct customers appearing in orders, regardless of status.
+- Customers with Delivered Orders = distinct customers with at least one delivered order.
+- Repeat Customers = customers with 2+ orders, regardless of status.
+- Repeat Delivered Customers = customers with 2+ delivered orders.
+- Customer sales metrics use orders.total_amount and delivered orders only.
+- Purchase-frequency distribution uses all order statuses.
+- Monthly activity uses delivered orders only.
+- Customer sales concentration ranks customers by delivered sales.
+*/
+
+-- ============================================================
+-- 1. CUSTOMER TABLE VALIDATION
+-- ============================================================
+
+-- 1A. Customer row count and uniqueness.
+SELECT
+    COUNT(*) AS customer_rows,
+    COUNT(DISTINCT customer_id) AS unique_customers
+FROM customers;
+
+-- 1B. Check for duplicate customer IDs.
+SELECT
+    customer_id,
+    COUNT(*) AS row_count
+FROM customers
+GROUP BY customer_id
+HAVING COUNT(*) > 1
+ORDER BY row_count DESC;
+
+-- 1C. Check missing customer IDs.
+SELECT COUNT(*) AS rows_with_missing_customer_id
+FROM customers
+WHERE customer_id IS NULL OR TRIM(customer_id) = '';
+
+
+-- ============================================================
+-- 2. CUSTOMER ORDER COVERAGE
+-- ============================================================
+
+SELECT
+    COUNT(DISTINCT customer_id) AS customers_with_orders,
+    COUNT(DISTINCT CASE
+        WHEN order_status = 'delivered' THEN customer_id
+    END) AS customers_with_delivered_orders
+FROM orders;
+
+-- Customers who have never placed an order.
+SELECT
+    COUNT(*) AS customers_without_orders
+FROM customers c
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM orders o
+    WHERE o.customer_id = c.customer_id
+);
+
+
+-- ============================================================
+-- 3. REPEAT CUSTOMERS AND ORDER FREQUENCY
+-- ============================================================
+
+WITH customer_orders AS (
+    SELECT
+        customer_id,
+        COUNT(*) AS total_orders,
+        SUM(CASE WHEN order_status = 'delivered' THEN 1 ELSE 0 END)
+            AS delivered_orders
+    FROM orders
+    GROUP BY customer_id
+)
+SELECT
+    COUNT(*) AS customers_with_orders,
+    SUM(CASE WHEN total_orders >= 2 THEN 1 ELSE 0 END)
+        AS repeat_customers,
+    ROUND(AVG(total_orders), 2)
+        AS average_orders_per_customer,
+    SUM(CASE WHEN delivered_orders >= 2 THEN 1 ELSE 0 END)
+        AS repeat_delivered_customers,
+    ROUND(AVG(delivered_orders), 2)
+        AS average_delivered_orders_per_customer
+FROM customer_orders;
+
+-- 3B. Distribution of customers by total order count.
+-- This includes all order statuses and only customers with at least one order.
+WITH customer_orders AS (
+    SELECT
+        customer_id,
+        COUNT(*) AS total_orders
+    FROM orders
+    GROUP BY customer_id
+)
+SELECT
+    CASE
+        WHEN total_orders = 1 THEN '1 order'
+        WHEN total_orders = 2 THEN '2 orders'
+        WHEN total_orders BETWEEN 3 AND 5 THEN '3–5 orders'
+        WHEN total_orders BETWEEN 6 AND 10 THEN '6–10 orders'
+        ELSE '11+ orders'
+    END AS purchase_frequency,
+    COUNT(*) AS customer_count,
+    MIN(total_orders) AS minimum_orders_in_group
+FROM customer_orders
+GROUP BY purchase_frequency
+ORDER BY minimum_orders_in_group;
+
+
+-- ============================================================
+-- 4. TOP 10 CUSTOMERS BY DELIVERED SALES
+-- ============================================================
+
+SELECT
+    o.customer_id,
+    c.name AS customer_name,
+    COUNT(*) AS delivered_orders,
+    ROUND(SUM(o.total_amount), 2) AS delivered_sales,
+    ROUND(AVG(o.total_amount), 2) AS average_delivered_order_value,
+    MIN(o.order_date) AS first_delivered_order_date,
+    MAX(o.order_date) AS latest_delivered_order_date
+FROM orders o
+JOIN customers c ON c.customer_id = o.customer_id
+WHERE o.order_status = 'delivered'
+GROUP BY o.customer_id, c.name
+ORDER BY delivered_sales DESC
+LIMIT 10;
+
+
+-- ============================================================
+-- 5. MONTHLY CUSTOMER ACTIVITY
+-- ============================================================
+
+SELECT
+    substr(order_date, 1, 7) AS year_month,
+    COUNT(DISTINCT customer_id) AS active_customers,
+    COUNT(*) AS delivered_orders,
+    ROUND(SUM(total_amount), 2) AS total_delivered_sales,
+    ROUND(AVG(total_amount), 2) AS average_delivered_order_value
+FROM orders
+WHERE order_status = 'delivered'
+GROUP BY substr(order_date, 1, 7)
+ORDER BY year_month;
+
+
+-- ============================================================
+-- 6. CUSTOMER SALES CONCENTRATION
+-- Share of delivered sales generated by the top 10% of customers
+-- with at least one delivered order. Uses whole-customer ranking.
+-- ============================================================
+
+WITH customer_sales AS (
+    SELECT
+        customer_id,
+        SUM(total_amount) AS delivered_sales
+    FROM orders
+    WHERE order_status = 'delivered'
+    GROUP BY customer_id
+),
+ranked_customers AS (
+    SELECT
+        customer_id,
+        delivered_sales,
+        ROW_NUMBER() OVER (
+            ORDER BY delivered_sales DESC, customer_id
+        ) AS customer_rank,
+        COUNT(*) OVER () AS customer_count
+    FROM customer_sales
+)
+SELECT
+    COUNT(*) AS customers_with_delivered_sales,
+    ROUND(SUM(delivered_sales), 2) AS total_delivered_sales,
+    CAST(customer_count * 0.10 AS INTEGER) AS top_10pct_customer_count,
+    ROUND(SUM(
+        CASE
+            WHEN customer_rank <= CAST(customer_count * 0.10 AS INTEGER)
+            THEN delivered_sales
+            ELSE 0
+        END
+    ), 2) AS top_10pct_customer_sales,
+    ROUND(
+        100.0 * SUM(
+            CASE
+                WHEN customer_rank <= CAST(customer_count * 0.10 AS INTEGER)
+                THEN delivered_sales
+                ELSE 0
+            END
+        ) / NULLIF(SUM(delivered_sales), 0),
+        2
+    ) AS top_10pct_sales_share_pct
+FROM ranked_customers
+CROSS JOIN (
+    SELECT COUNT(*) AS customer_count FROM customer_sales
+);
+
+
+-- ============================================================
+-- 7. CUSTOMER-LEVEL SUMMARY
+-- One row per customer, including customers with no orders.
+-- ============================================================
+
+SELECT
+    c.customer_id,
+    c.name AS customer_name,
+    COUNT(o.order_id) AS total_orders,
+    SUM(CASE WHEN o.order_status = 'delivered' THEN 1 ELSE 0 END)
+        AS delivered_orders,
+    ROUND(SUM(
+        CASE
+            WHEN o.order_status = 'delivered' THEN o.total_amount
+            ELSE 0
+        END
+    ), 2) AS delivered_sales,
+    ROUND(AVG(
+        CASE
+            WHEN o.order_status = 'delivered' THEN o.total_amount
+        END
+    ), 2) AS average_delivered_order_value,
+    MIN(o.order_date) AS first_order_date,
+    MAX(o.order_date) AS latest_order_date
+FROM customers c
+LEFT JOIN orders o ON o.customer_id = c.customer_id
+GROUP BY c.customer_id, c.name
+ORDER BY delivered_sales DESC;
