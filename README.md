@@ -1,38 +1,63 @@
 # Retail Sales Performance Analysis
 
-An interactive four-page Power BI dashboard exploring retail sales performance, revenue trends, product and category performance, order fulfillment, and returns.
+An interactive four-page Power BI portfolio project exploring retail sales performance, monthly trends, product categories, and customer patterns using a synthetic retail dataset.
 
 ## Live Dashboard
 
-[View the interactive Power BI report](https://app.powerbi.com/view?r=eyJrIjoiMGUyMTkxMTUtNWE4MS00ZDIzLWI2ZTMtYjM5ZWMxMTdkZjI3IiwidCI6IjgyMGFjZTNjLTRhYzMtNDUzNS1hZTU2LTI2M2VlODY2Y2M3NiJ9)
+**[Open the interactive Power BI report](https://app.powerbi.com/view?r=eyJrIjoiMGUyMTkxMTUtNWE4MS00ZDIzLWI2ZTMtYjM5ZWMxMTdkZjI3IiwidCI6IjgyMGFjZTNjLTRhYzMtNDUzNS1hZTU2LTI2M2VlODY2Y2M3NiJ9)**
 
-> The report is published publicly for portfolio demonstration. The dataset is synthetic; no real customer information is intended to be included.
+The report is published publicly for portfolio demonstration. Do not use this public report setup for confidential data.
+
+## Dashboard Preview
+
+### 1. Retail Sales Performance
+
+![Retail Sales Performance dashboard](screenshots/retail_sales_performance.png)
+
+### 2. Monthly Sales Performance
+
+![Monthly Sales Performance dashboard](screenshots/Montly_sales_performance.png)
+
+### 3. Product Category Performance
+
+![Product Category Performance dashboard](screenshots/Product_category_performance.png)
+
+### 4. Customer Analysis
+
+![Customer Analysis dashboard](screenshots/customer_analysis.png)
 
 ## Project Overview
 
-This project uses Power BI and SQL-oriented data exploration to turn retail order data into a multi-page report. It is designed to demonstrate dashboard development, KPI communication, and business-focused analysis.
+This project brings retail data into a multi-page Power BI report supported by SQL data exploration. The goal is to present business-oriented views of performance through interactive visualizations and clear reporting.
 
 ## Questions Explored
 
-- How do sales and revenue trend over time?
-- Which products and categories contribute most to sales?
-- What does the order-status mix show about fulfillment?
-- What patterns appear in returns?
+- How do sales change over time?
+- Which products and categories stand out in performance?
+- What patterns are visible in customer analysis?
+- What can order and return data reveal about retail operations?
 
-## Tools
+## Tools and Technologies
 
-- **Power BI** — interactive report pages and visual analytics
-- **SQL** — data exploration and analysis
+- **Power BI** — report building and interactive visual analytics
+- **SQL** — data profiling and analytical queries
+- **CSV / SQLite** — data files used in the analysis
 
-## Report Pages
+## Repository Structure
 
-The report contains four pages. Page names and the detailed findings will be documented here as the report is finalized.
+- `reports/` — Power BI report file
+- `sql/` — SQL scripts for profiling and analysis
+- `processed/` — processed retail data in CSV format
+- `raw/` — source SQLite database
+- `docs/` — data profiling and project documentation
+- `screenshots/` — dashboard page previews
 
-## Repository Contents
+## How to Explore
 
-The repository will include the Power BI report file (.pbix), relevant SQL queries, and selected screenshots as they are added.
+1. Open the [live dashboard](https://app.powerbi.com/view?r=eyJrIjoiMGUyMTkxMTUtNWE4MS00ZDIzLWI2ZTMtYjM5ZWMxMTdkZjI3IiwidCI6IjgyMGFjZTNjLTRhYzMtNDUzNS1hZTU2LTI2M2VlODY2Y2M3NiJ9) to interact with the report.
+2. Browse the screenshots above for a quick visual overview.
+3. Explore the SQL scripts and profiling documentation to review the analysis workflow.
 
-## Notes
+## Data Note
 
-- This is a portfolio project based on synthetic retail data.
-- Public Power BI links can expose report data to anyone with access to the link. Do not add confidential or personal data.
+This is a portfolio project based on synthetic retail data. Public Power BI links can expose report content and underlying data to anyone who has access to the link, so only share data that is safe to make public.
